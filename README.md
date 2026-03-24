@@ -67,6 +67,8 @@ Video covers a live demo, two code walkthroughs (dynamic rows + event delegation
 Estimated total: 25 / 25
 
 
+
+
 ## 💭 Reflection
 
 ### What I Learned
@@ -84,3 +86,9 @@ Event delegation was the concept that surprised me most. Instead of attaching a 
 The main area I would improve is the history view. Right now entries can only be searched by keyword; I would add a mood filter dropdown and a date-range picker so users can ask "show me all *Anxious* days last month." I would also add a simple statistics section — a bar chart of mood frequency — so the app gives insight rather than just storing data. Displaying that chart using only vanilla JS and the Canvas API would also be a good next challenge technically.
 
 ---
+
+## Live URL 
+https://ssagar10.github.io/Project_1/
+
+## Video Presentation
+https://video.laurea.fi/media/Project_1/0_39s6rknf
