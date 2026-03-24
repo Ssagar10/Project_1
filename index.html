@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mood Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😊</text></svg>" />
+
+  <style>
+
+    /* CSS VARIABLES
+       When dark mode is ON we just swap the values. */
+
+    :root {
+      --bg:     #fdf6ec;
+      --card:   #ffffff;
+      --text:   #333333;
+      --muted:  #999999;
+      --border: #dddddd;
+      --input:  #ffffff;
+      --tag:    #f0e8df;
+      --accent: #e07b39;
+      --shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    /* Override every variable when <body> has class "dark" */
+    body.dark {
+      --bg:     #1a1a2e;
+      --card:   #16213e;
+      --text:   #e0e0e0;
+      --muted:  #888888;
+      --border: #2a2a4a;
+      --input:  #0f3460;
+      --tag:    #0f3460;
+      --accent: #f4a261;
+      --shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
+
+    /*BASE STYLES*/
+    
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .container {
+      max-width: 590px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    h1 { font-size: 1.9rem; color: var(--accent); margin: 0; }
+
+    /* Clickable toggle label */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .theme-toggle span { font-size: 0.85rem; color: var(--muted); }
+
+    /* Pill-shaped track */
+    .switch-track {
+      width: 46px; height: 26px;
+      background: #cccccc;
+      border-radius: 99px;
+      position: relative;
+      transition: background 0.3s;
+    }
+    /* Round thumb */
+    .switch-track::after {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: left 0.3s;
+    }
+    /* Dark mode ON: thumb slides right */
+    body.dark .switch-track          { background: var(--accent); }
+    body.dark .switch-track::after   { left: 23px; }
+
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 28px;
+    }
+
+    /* CARD */
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      transition: background 0.3s;
+    }
+    .card h2 { font-size: 1rem; color: var(--accent); margin: 0 0 14px; }
+
+    /* MOOD BUTTONS */
+    .mood-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    .mood-btn {
+      font-size: 1.8rem;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .mood-btn:hover { transform: scale(1.12); }
+    .mood-btn.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(228,123,57,0.25);
+    }
+
+    #moodLabel { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
+
+    /* =============================================
+       ACTIVITY ROWS  (added / removed by JS)
+    ============================================= */
+    .act-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      animation: fadeIn 0.25s ease;   /* fade in when added */
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Numbered circle badge */
+    .act-num {
+      width: 24px; height: 24px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Remove button */
+    .act-remove {
+      background: none; border: none;
+      color: var(--muted); font-size: 1rem;
+      cursor: pointer; padding: 4px;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+    .act-remove:hover { color: var(--accent); }
+
+    /* "Add activity" dashed button */
+    #addActBtn {
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      padding: 7px 14px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    #addActBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* =============================================
+       TEXT INPUTS
+    ============================================= */
+    input[type="text"], textarea {
+      width: 100%;
+      background: var(--input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--text);
+      box-sizing: border-box;
+      outline: none;
+      transition: border-color 0.2s, background 0.3s, color 0.3s;
+    }
+    input[type="text"]:focus,
+    textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 70px; }
+
+    /* =============================================
+       SAVE BUTTON
+    ============================================= */
+    .save-btn {
+      width: 100%; padding: 13px;
+      background: var(--accent); color: white;
+      border: none; border-radius: 10px;
+      font-size: 1rem; font-family: inherit;
+      cursor: pointer; transition: opacity 0.2s;
+    }
+    .save-btn:hover    { opacity: 0.88; }
+    .save-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* =============================================
+       HISTORY
+    ============================================= */
+    #searchInput { margin-bottom: 16px; }
+
+    .entry {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      background: var(--bg);
+      position: relative;
+      transition: background 0.3s;
+    }
+    .entry-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .entry-emoji  { font-size: 1.6rem; }
+    .entry-mood   { font-weight: bold; color: var(--accent); }
+    .entry-date   { font-size: 0.75rem; color: var(--muted); margin-left: auto; }
+
+    .tag {
+      display: inline-block;
+      background: var(--tag);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 2px 3px 2px 0;
+    }
+
+    .entry-note { font-size: 0.82rem; color: var(--muted); font-style: italic; margin-top: 6px; }
+
+    .delete-btn {
+      position: absolute; top: 12px; right: 12px;
+      background: none; border: none;
+      font-size: 1rem; cursor: pointer;
+      color: var(--border); transition: color 0.2s;
+    }
+    .delete-btn:hover { color: var(--accent); }
+
+    .empty { text-align: center; color: var(--muted); padding: 30px 0; font-size: 0.9rem; }
+
+    /* =============================================
+       TOAST
+    ============================================= */
+    #toast {
+      position: fixed; bottom: 24px;
+      left: 50%; transform: translateX(-50%);
+      background: #333; color: white;
+      padding: 10px 22px; border-radius: 30px;
+      font-size: 0.85rem; opacity: 0;
+      pointer-events: none; transition: opacity 0.3s;
+      z-index: 100;
+    }
+    #toast.show { opacity: 1; }
+
+    /* =============================================
+       RESPONSIVE
+    ============================================= */
+    @media (max-width: 480px) {
+      body { padding: 14px; }
+      h1   { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ── HEADER ── -->
+  <div class="top-bar">
+    <h1>😊 Mood Tracker</h1>
+
+    <!--
+      EVENT: "click" on this label toggles dark mode.
+      It wraps both the text label and the visual switch.
+    -->
+    <label class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+      <span id="themeLabel">🌙 Dark</span>
+      <div class="switch-track"></div>
+    </label>
+  </div>
+  <p class="subtitle">A simple place to log your mood and activities each day.</p>
+
+  <!-- ══ 1. MOOD PICKER ══ -->
+  <div class="card">
+    <h2>How are you feeling?</h2>
+    <!--
+      data-mood="..." lets JS read the mood name without looking at the emoji.
+      EVENT: "click" on any .mood-btn selects it.
+    -->
+    <div class="mood-row" id="moodRow">
+      <button class="mood-btn" data-mood="Amazing">😁</button>
+      <button class="mood-btn" data-mood="Good">😊</button>
+      <button class="mood-btn" data-mood="Okay">😐</button>
+      <button class="mood-btn" data-mood="Low">😔</button>
+      <button class="mood-btn" data-mood="Rough">😩</button>
+      <button class="mood-btn" data-mood="Anxious">😰</button>
+      <button class="mood-btn" data-mood="Tired">😴</button>
+    </div>
+    <p id="moodLabel">No mood selected yet</p>
+  </div>
+
+  <!-- ══ 2. ACTIVITIES (dynamic rows added by JS) ══ -->
+  <div class="card">
+    <h2>What did you do today? <small style="color:var(--muted)">(up to 3)</small></h2>
+    <!-- JS injects .act-row elements here -->
+    <div id="actWrap"></div>
+    <!-- EVENT: "click" adds a new row (up to 3) -->
+    <button id="addActBtn">+ Add activity</button>
+  </div>
+
+  <!-- ══ 3. NOTE ══ -->
+  <div class="card">
+    <h2>Any notes? <small style="color:var(--muted)">(optional)</small></h2>
+    <textarea id="noteInput" placeholder="Write anything on your mind…" maxlength="300"></textarea>
+  </div>
+
+  <!-- ══ 4. SAVE ══
+       Starts disabled; JS enables it once a mood is selected.
+       EVENT: "click" saves the entry. -->
+  <button class="save-btn" id="saveBtn" disabled>💾 Save Entry</button>
+
+  <!-- ══ 5. HISTORY ══ -->
+  <div class="card" style="margin-top:30px;">
+    <h2>📋 Past Entries</h2>
+    <!-- EVENT: "input" filters the list as you type -->
+    <input type="text" id="searchInput" placeholder="🔍  Search by mood or activity…" />
+    <!-- Entry cards are injected here by renderEntries() -->
+    <div id="entryList"></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+
+<script>
+  // ============================================================
+  //  A — DARK MODE
+  //
+  //  On load : check localStorage and apply saved theme.
+  //  On click: toggle the "dark" class on <body>.
+  //            CSS variables do the rest automatically.
+  // ============================================================
+
+  // Apply saved theme before anything else (avoids a colour flash)
+  if (localStorage.getItem("mood_theme") === "dark") {
+    document.body.classList.add("dark");
+    document.getElementById("themeLabel").textContent = "☀️ Light";
+  }
+
+  // "click" event on the toggle label
+  document.getElementById("themeToggle").addEventListener("click", function () {
+    // classList.toggle adds "dark" if missing, removes it if present.
+    // It also returns true (added) or false (removed).
+    var isDark = document.body.classList.toggle("dark");
+
+    if (isDark) {
+      document.getElementById("themeLabel").textContent = "☀️ Light";
+      localStorage.setItem("mood_theme", "dark");
+    } else {
+      document.getElementById("themeLabel").textContent = "🌙 Dark";
+      localStorage.setItem("mood_theme", "light");
+    }
+  });
+
+
+  // ============================================================
+  //  B — APP STATE
+  // ============================================================
+
+  // Holds the currently selected mood, e.g. { emoji: "😊", label: "Good" }
+  var selectedMood = null;
+
+
+  // ============================================================
+  //  C — LOCALSTORAGE HELPERS
+  // ============================================================
+
+  function getEntries() {
+    var raw = localStorage.getItem("mood_entries");
+    return raw ? JSON.parse(raw) : [];   // return empty array if nothing saved
+  }
+
+  function saveEntries(entries) {
+    localStorage.setItem("mood_entries", JSON.stringify(entries));
+  }
+
+
+  // ============================================================
+  //  D — MOOD BUTTONS  (click event)
+  // ============================================================
+
+  var moodButtons = document.querySelectorAll(".mood-btn");
+
+  moodButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+
+      // Deselect all buttons first
+      moodButtons.forEach(function (b) { b.classList.remove("selected"); });
+
+      // Select this one
+      btn.classList.add("selected");
+
+      // Store the mood  (btn.textContent = the emoji, btn.dataset.mood = the label)
+      selectedMood = { emoji: btn.textContent, label: btn.dataset.mood };
+
+      document.getElementById("moodLabel").textContent =
+        "Selected: " + selectedMood.emoji + " " + selectedMood.label;
+
+      document.getElementById("saveBtn").disabled = false;
+    });
+  });
+
+
+  // ============================================================
+  //  E — DYNAMIC ACTIVITY ROWS
+  //
+  //  addActivityRow()  — creates one row and appends it
+  //  renumberRows()    — fixes badge numbers after a remove
+  //  updateAddBtn()    — hides the add button when we have 3 rows
+  // ============================================================
+
+  // Start the page with one empty activity row
+  addActivityRow();
+
+  // "Add activity" button — click event
+  document.getElementById("addActBtn").addEventListener("click", function () {
+    var currentRows = document.querySelectorAll(".act-row").length;
+
+    if (currentRows >= 3) {
+      showToast("Maximum 3 activities!");
+      return;
+    }
+
+    addActivityRow();
+    updateAddBtn();
+  });
+
+  function addActivityRow() {
+    var wrap = document.getElementById("actWrap");
+
+    // Row number = how many rows already exist + 1
+    var rowNumber = wrap.children.length + 1;
+
+    // Create the row element in memory
+    var row = document.createElement("div");
+    row.className = "act-row";
+    row.innerHTML =
+      '<div class="act-num">' + rowNumber + '</div>' +
+      '<input type="text" placeholder="Activity ' + rowNumber + '…" maxlength="60" />' +
+      '<button class="act-remove" title="Remove">✕</button>';
+
+    // Attach remove-button click event BEFORE adding row to the page
+    row.querySelector(".act-remove").addEventListener("click", function () {
+      // Fade out smoothly, then remove
+      row.style.transition = "opacity 0.2s";
+      row.style.opacity = "0";
+
+      setTimeout(function () {
+        row.remove();          // remove from DOM
+        renumberRows();        // fix badge numbers
+        updateAddBtn();        // show add button again if now below 3
+      }, 200);
+    });
+
+    wrap.appendChild(row);   // add the row to the page
+    updateAddBtn();
+  }
+
+  function renumberRows() {
+    // After a removal the numbers may be wrong (e.g. 1, 3).  Fix them.
+    var rows = document.querySelectorAll(".act-row");
+    rows.forEach(function (row, index) {
+      row.querySelector(".act-num").textContent = index + 1;
+    });
+  }
+
+  function updateAddBtn() {
+    var count = document.querySelectorAll(".act-row").length;
+    // Hide the button when we already have 3 rows
+    document.getElementById("addActBtn").style.display = (count >= 3) ? "none" : "block";
+  }
+
+
+  // ============================================================
+  //  F — SAVE BUTTON  (click event)
+  // ============================================================
+
+  document.getElementById("saveBtn").addEventListener("click", function () {
+
+    // Read all activity inputs and keep only non-empty ones
+    var inputs = document.querySelectorAll(".act-row input");
+    var activities = [];
+    inputs.forEach(function (input) {
+      var val = input.value.trim();
+      if (val !== "") activities.push(val);
+    });
+
+    if (activities.length === 0) {
+      showToast("Please enter at least one activity!");
+      return;
+    }
+
+    // Build the entry object
+    var entry = {
+      id:         Date.now(),              
+      date:       new Date().toISOString(), 
+      mood:       selectedMood,
+      activities: activities,
+      note:       document.getElementById("noteInput").value.trim()
+    };
+
+    // Prepend to the saved list
+    var entries = getEntries();
+    entries.unshift(entry);   
+    saveEntries(entries);
+
+    // ── Reset the form ──
+    selectedMood = null;
+    moodButtons.forEach(function (b) { b.classList.remove("selected"); });
+    document.getElementById("moodLabel").textContent = "No mood selected yet";
+    document.getElementById("noteInput").value = "";
+    document.getElementById("saveBtn").disabled = true;
+    document.getElementById("actWrap").innerHTML = ""; 
+    addActivityRow();                                  
+
+    renderEntries();
+    showToast("✅ Entry saved!");
+  });
+
+
+  // ============================================================
+  //  G — SEARCH  (input event fires on every keystroke)
+  // ============================================================
+
+  document.getElementById("searchInput").addEventListener("input", function () {
+    renderEntries();
+  });
+
+
+  // ============================================================
+  //  H — RENDER ENTRIES
+  //
+  //  Reads from localStorage, filters by search term,
+  //  then builds HTML cards and inserts them into #entryList.
+  // ============================================================
+
+  function renderEntries() {
+    var list    = document.getElementById("entryList");
+    var search  = document.getElementById("searchInput").value.toLowerCase();
+    var entries = getEntries();
+
+    // Filter if search term is not empty
+    if (search !== "") {
+      entries = entries.filter(function (e) {
+        var moodMatch = e.mood.label.toLowerCase().includes(search);
+        var actMatch  = e.activities.some(function (a) {
+          return a.toLowerCase().includes(search);
+        });
+        return moodMatch || actMatch;
+      });
+    }
+
+    list.innerHTML = "";  // clear before re-drawing
+
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="empty">No entries yet — save one above! 🌱</div>';
+      return;
+    }
+
+    entries.forEach(function (entry) {
+
+      // Format the date, e.g. "Mon, 24 Mar 2026"
+      var dateStr = new Date(entry.date).toLocaleDateString("en-GB", {
+        weekday: "short", day: "numeric", month: "short", year: "numeric"
+      });
+
+      // Build the activity pill tags
+      var tagsHTML = entry.activities.map(function (a) {
+        return '<span class="tag">' + escapeHtml(a) + '</span>';
+      }).join("");
+
+      var noteHTML = entry.note
+        ? '<p class="entry-note">"' + escapeHtml(entry.note) + '"</p>'
+        : "";
+
+      var div = document.createElement("div");
+      div.className = "entry";
+      div.innerHTML =
+        '<button class="delete-btn" data-id="' + entry.id + '" title="Delete">✕</button>' +
+        '<div class="entry-header">' +
+          '<span class="entry-emoji">' + entry.mood.emoji  + '</span>' +
+          '<span class="entry-mood">'  + entry.mood.label  + '</span>' +
+          '<span class="entry-date">'  + dateStr           + '</span>' +
+        '</div>' +
+        '<div>' + tagsHTML + '</div>' +
+        noteHTML;
+
+      list.appendChild(div);
+    });
+  }
+
+
+  // ============================================================
+  //  I — DELETE  (event delegation)
+  // ============================================================
+
+  document.getElementById("entryList").addEventListener("click", function (event) {
+    if (event.target.classList.contains("delete-btn")) {
+      var idToDelete = Number(event.target.dataset.id);
+
+      // Keep every entry EXCEPT the deleted one
+      var updated = getEntries().filter(function (e) { return e.id !== idToDelete; });
+      saveEntries(updated);
+      renderEntries();
+      showToast("🗑 Entry deleted");
+    }
+  });
+
+
+  // ============================================================
+  //  J — TOAST  (small bottom notification)
+  // ============================================================
+
+  function showToast(message) {
+    var toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+    setTimeout(function () { toast.classList.remove("show"); }, 2500);
+  }
+
+
+  // ============================================================
+  //  K — UTILITY
+  // ============================================================
+
+  // Prevent user text from being interpreted as HTML
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+
+  // ============================================================
+  //  STARTUP  — show any saved entries when the page first loads
+  // ============================================================
+  renderEntries();
+</script>
+
+</body>
+</html>
